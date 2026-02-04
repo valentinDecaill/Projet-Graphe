@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import json
 import pandas as pd
 
+# La bibliothèque pour la carte
+import contextily as ctx 
+
 
 G = nx.Graph() #on crée le graph G vide pour l'instant
 
@@ -43,43 +46,44 @@ for index, row in def_lignes.iterrows():                    # On parcourt chaque
 
 
 # ===================================================================================== #
-#                                   Affichage                                           #
+#                                     Affichage                                         #
 # ===================================================================================== #
 
-plt.figure(figsize=(15, 12)) # Taille de l'image de la carte
-pos = nx.get_node_attributes(G, 'pos') # on ajoutes les position calculées au graphe G
+
+# --- CRÉATION DE LA TOILE ---
+fig, ax = plt.subplots(figsize=(15, 12)) 
+pos = nx.get_node_attributes(G, 'pos') 
 
 
 # --- STYLES DES LIGNES ---
-def_lignes = pd.read_csv('Lignes.csv', sep=';') # On utilise Lignes.csv pour dessiner les courbes colorées du métro
+df_dessin = pd.read_csv('Lignes.csv', sep=';') 
 
-for index, row in def_lignes.iterrows():
+for index, row in df_dessin.iterrows():
     shape = json.loads(row['Shape'])
     
-    couleur = '#' + str(row['Color']) if pd.notna(row['Color']) else '#BDC3C7' # On récupère la couleur dans le tableau
+    couleur = '#' + str(row['Color']) if pd.notna(row['Color']) else '#BDC3C7'
     
-    if shape['type'] == 'MultiLineString': # On a plusieurs morceaux de ligne, donc on boucle sur chaque morceau pour les afficher
+    if shape['type'] == 'MultiLineString':
         for segment in shape['coordinates']:
-            # On sépare les Longitudes et Latitudes du segment actuel
             xs, ys = zip(*segment)
-            # On dessine le segment
-            plt.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
+            ax.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
 
     elif shape['type'] == 'LineString':
-        # On n'a qu'un seul morceau continu
-        # On sépare directement les Longitudes et Latitudes
         xs, ys = zip(*shape['coordinates'])
-        # On dessine la ligne
-        plt.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
+        ax.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
 
 
 # --- STYLES DES STATIONS ---
-nx.draw_networkx_nodes(G, pos, node_size=15, node_color='#2C3E50', alpha=0.8) # On dessine les stations en petits points noirs par-dessus les lignes
+nx.draw_networkx_nodes(G, pos, ax=ax, node_size=15, node_color='#2C3E50', alpha=0.8)
 
 
-# --- FINITION ET AFFICHAGE---
-plt.title("Réseau Complet dU Transport Parisien (Métro & RER)", fontsize=18, fontweight='bold', pad=20)
-plt.axis('equal') # Pour garder les bonnes proportions de la carte de Paris
-plt.axis('off') 
+# --- AJOUT d'une VRAIE CARTE EN ARRIÈRE-PLAN ---
+ctx.add_basemap(ax, crs='EPSG:4326', source=ctx.providers.OpenStreetMap.Mapnik)
+
+
+# --- FINITION ET AFFICHAGE ---
+ax.set_title("Réseau Complet du Transport Parisien (Métro & RER)", fontsize=18, fontweight='bold', pad=20)
+ax.set_axis_off() # Cache les coordonnées
+plt.axis('equal') 
 plt.tight_layout()
 plt.show()
