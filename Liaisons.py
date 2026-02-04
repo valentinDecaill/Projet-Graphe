@@ -1,6 +1,6 @@
 
 
-# Code par ia pour générer les liaisons entre les noeuds et aretes
+# Code par ia pour générer les liaisons entre les noeuds et aretes des fichiers
 
 
 import pandas as pd
