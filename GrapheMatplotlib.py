@@ -18,18 +18,22 @@ st.title("Réseau de Transport Parisien")
 
 @st.cache_resource # On garde en mémoire (cache) pour éviter de tout recalculer pour le site
 def charger_graphe(): # fonction pour charger le graphe G avec les donnée des CSV
+    
     G = nx.Graph()
     
     # Chargement des Stations (Noeuds)
     df_stations = pd.read_csv('Stations.csv', sep=';')
     for _, row in df_stations.iterrows():
         coords = row['Geo Point'].split(',')
-        G.add_node(row['gares_id'], pos=(float(coords[1]), float(coords[0])), nom=row['nom_long'])
+        id_station = str(row['gares_id']) 
+        G.add_node(id_station, pos=(float(coords[1]), float(coords[0])), nom=row['nom_long'])
         
     # Chargement des Lignes (Arêtes)
     df_lignes = pd.read_csv('liaisons.csv', sep=';')
     for _, row in df_lignes.iterrows():
-        G.add_edge(row['source'], row['target'], weight=row['weight'])
+        id_source = str(row['source'])
+        id_target = str(row['target'])
+        G.add_edge(id_source, id_target, weight=row['weight'])
         
     return G # on returne le graphe finit et charger
 
