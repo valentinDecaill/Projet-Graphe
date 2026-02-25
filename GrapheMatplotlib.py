@@ -1,89 +1,66 @@
-import networkx as nx
+# Lancement :  $ streamlit run GrapheMatplotlib.py
+
+import streamlit as st # pour générer un site web interactif
+
+import networkx as nx  
 import matplotlib.pyplot as plt
 
-# Lecture de fichiers csv
+import pandas as pd # pour la lecture des données CSV
 import json
-import pandas as pd
 
-# La bibliothèque pour la carte
-import contextily as ctx 
+import contextily as ctx # pour l'affichage d'une carte en arrière plan
 
+# Configuration de l'interface Web
+st.set_page_config(page_title="Projet Graphes", layout="wide")
+st.title("Réseau de Transport Parisien")
 
-G = nx.Graph() #on crée le graph G vide pour l'instant
+# génération de la carte du métro parisien avec les données CSV
+@st.cache_resource # pour garder dans la mémoire cache pour éviter de recalculer pour le site web streamlit
+def generer_carte():
+    G = nx.Graph()
 
-
-# ===================================================================================== #
-#           Chargement des noeuds (Stations) à partir du fichier exel (.csv)            #
-# ===================================================================================== #
-
-
-print("Chargement des stations...")
-def_stations = pd.read_csv('Sations.csv', sep=';')  # on lit le fichier avec pandas en séparant par ';'
-
-
-for index, row in def_stations.iterrows():   # On parcourt chaque ligne du fichier Excel pour ajouter les noeuds
+    # Chargement des Noeuds
     
-    coordonnees = row['Geo Point'].split(',') # Coupe à la virgule pour obtenir des coordonnées utilisable pour le noeuds
-    lat = float(coordonnees[0]) # Y
-    lon = float(coordonnees[1]) # X
+    print("Chargement des Noeuds en cours ...")
+    df_stations = pd.read_csv('Stations.csv', sep=';') # On lit et ajoute les données des Noeuds
+    for _, row in df_stations.iterrows():
+        coords = row['Geo Point'].split(',')
+        G.add_node(row['gares_id'], pos=(float(coords[1]), float(coords[0])), nom=row['nom_long'])
 
-    G.add_node(row['gares_id'], pos=(lon, lat), nom=row['nom_long']) # On ajoute le nœud au graphe
+    # Chargement des Arêtes
     
-    
+    print("Chargement des Arêtes en cours ...")
+    df_lignes = pd.read_csv('liaisons.csv', sep=';') # On lit et ajoute les données des Arêtes
+    for _, row in df_lignes.iterrows():
+        G.add_edge(row['source'], row['target'], weight=row['weight'])
 
-# ===================================================================================== #
-#                           Chargement des Aretes (Lignes)                              #
-# ===================================================================================== #
+    # Préparation du Dessin
+    fig, ax = plt.subplots(figsize=(12, 10))
+    pos = nx.get_node_attributes(G, 'pos')
 
-# calcule du poids = sqrt((x2 - x1)**2 + (y2 - y1)**2)   / 100   On Calcul de la distance entre deux points (x1, y1) et (x2, y2)
-
-print("Chargement des Lignes...")
-def_lignes = pd.read_csv('liaisons.csv', sep=';') # on lit le fichier avec pandas en séparant par ';'
-
-for index, row in def_lignes.iterrows():                    # On parcourt chaque ligne du fichier Excel pour ajouter les aretes
-    G.add_edge(row['source'], row['target'], weight=row['weight'])
-
-
-
-# ===================================================================================== #
-#                                     Affichage                                         #
-# ===================================================================================== #
-
-
-# --- CRÉATION DE LA TOILE ---
-fig, ax = plt.subplots(figsize=(15, 12)) 
-pos = nx.get_node_attributes(G, 'pos') 
-
-
-# --- STYLES DES LIGNES ---
-df_dessin = pd.read_csv('Lignes.csv', sep=';') 
-
-for index, row in df_dessin.iterrows():
-    shape = json.loads(row['Shape'])
-    
-    couleur = '#' + str(row['Color']) if pd.notna(row['Color']) else '#BDC3C7'
-    
-    if shape['type'] == 'MultiLineString':
-        for segment in shape['coordinates']:
-            xs, ys = zip(*segment)
+    # Tracé des lignes
+    df_dessin = pd.read_csv('Lignes.csv', sep=';')
+    for _, row in df_dessin.iterrows():
+        shape = json.loads(row['Shape'])
+        couleur = '#' + str(row['Color']) if pd.notna(row['Color']) else '#BDC3C7'
+        
+        if shape['type'] == 'MultiLineString':
+            for segment in shape['coordinates']:
+                xs, ys = zip(*segment)
+                ax.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
+        elif shape['type'] == 'LineString':
+            xs, ys = zip(*shape['coordinates'])
             ax.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
 
-    elif shape['type'] == 'LineString':
-        xs, ys = zip(*shape['coordinates'])
-        ax.plot(xs, ys, color=couleur, linewidth=2, alpha=0.5)
+    # Tracé des stations et fond de carte
+    nx.draw_networkx_nodes(G, pos, ax=ax, node_size=15, node_color='#2C3E50', alpha=0.8)
+    ctx.add_basemap(ax, crs='EPSG:4326', source=ctx.providers.OpenStreetMap.Mapnik)
+    
+    ax.set_axis_off()
+    plt.tight_layout()
+    
+    return fig
 
-
-# --- STYLES DES STATIONS ---
-nx.draw_networkx_nodes(G, pos, ax=ax, node_size=15, node_color='#2C3E50', alpha=0.8)
-
-
-# --- AJOUT d'une VRAIE CARTE EN ARRIÈRE-PLAN ---
-ctx.add_basemap(ax, crs='EPSG:4326', source=ctx.providers.OpenStreetMap.Mapnik)
-
-
-# --- FINITION ET AFFICHAGE ---
-ax.set_title("Réseau Complet du Transport Parisien (Métro & RER)", fontsize=18, fontweight='bold', pad=20)
-ax.set_axis_off() # Cache les coordonnées
-plt.axis('equal') 
-plt.tight_layout()
-plt.show()
+# Affichage sur le site
+figure_prete = generer_carte()
+st.pyplot(figure_prete)
