@@ -2,9 +2,11 @@ import streamlit as st
 import networkx as nx
 from utils import charger_graphe, charger_dessin, dessiner_carte
 
-st.set_page_config(page_title="Le Plus Court Chemin", page_icon="📍", layout="wide")
+st.set_page_config(page_title="Le Plus Court Chemin", page_icon="static/images/PCC.webp", layout="wide")
 
-st.title("📍 Calcul du Plus Court Chemin")
+col1, col2 = st.columns([1, 10], vertical_alignment="center")
+col1.image("static/images/PCC.webp", width=80)
+col2.header("Calcul du Plus Court Chemin")
 st.markdown("Calcul de l'itinéraire optimal pour minimiser le temps de transport.")
 
 G = charger_graphe()
